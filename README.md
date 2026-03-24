@@ -51,17 +51,19 @@ Addons/SistemaDeTicket/
 
 ### 1) Mapeamento real de facção -> time
 
-Agora o `STK_TicketSystemComponent` já faz esse mapeamento por `FactionKey`:
+Agora o `STK_TicketSystemComponent` já está preparado para o mod externo de facções
+**Ucrânia x Rússia** usando `FactionKey`:
 
-- `m_sTeamAFactionKey` (padrão `"US"`)
-- `m_sTeamBFactionKey` (padrão `"USSR"`)
+- Ucrânia -> `TEAM_A` (`UKR` / `UKRAINE`)
+- Rússia -> `TEAM_B` (`RUS` / `RUSSIA`)
 
 Fluxo:
 1. Recebe `playerId` (morte/respawn) ou `Faction` (captura).
 2. Lê `FactionKey`.
-3. Compara com os dois atributos acima e retorna `TEAM_A` ou `TEAM_B`.
+3. Compara com as chaves acima e retorna `TEAM_A` ou `TEAM_B`.
 
-Se seu cenário usa outras facções, basta trocar esses dois atributos no Editor.
+Se o seu mod externo usar chaves diferentes, altere apenas o método
+`ResolveTeamByFaction(...)` em `STK_TicketSystemComponent`.
 
 ### 2) Habilitar/desabilitar captura da torre
 

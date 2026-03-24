@@ -11,12 +11,6 @@ typedef func STK_OnTicketScoreChanged;
 
 class STK_TicketSystemComponent : ScriptComponent
 {
-	[Attribute("US", UIWidgets.EditBox, "FactionKey do Time A (ex: US)")]
-	protected string m_sTeamAFactionKey;
-
-	[Attribute("USSR", UIWidgets.EditBox, "FactionKey do Time B (ex: USSR)")]
-	protected string m_sTeamBFactionKey;
-
 	protected ref STK_Config m_pConfig;
 	protected ref STK_SequentialCaptureSystem m_pCaptureSystem;
 	protected ref map<int, ref STK_TeamState> m_mTeams;
@@ -29,6 +23,10 @@ class STK_TicketSystemComponent : ScriptComponent
 	// IDs de time definidos pelo seu mod (exemplo 0 e 1)
 	protected const int TEAM_A = 0;
 	protected const int TEAM_B = 1;
+
+	// Integração com mod externo de facções (Ucrânia x Rússia)
+	protected const string FACTION_KEY_UKRAINE = "UKR";
+	protected const string FACTION_KEY_RUSSIA = "RUS";
 
 	// Replicação de placar para clientes (HUD)
 	[RplProp(onRplName: "OnReplicatedScoreChanged")]
@@ -231,11 +229,14 @@ class STK_TicketSystemComponent : ScriptComponent
 
 		FactionKey key = faction.GetFactionKey();
 		string keyText = key.ToString();
+		keyText.ToUpper();
 
-		if (keyText == m_sTeamAFactionKey)
+		// Time A = Ucrânia | Time B = Rússia
+		// Se seu mod de facções usar outras chaves, altere somente estas comparações.
+		if (keyText == FACTION_KEY_UKRAINE || keyText == "UKRAINE")
 			return TEAM_A;
 
-		if (keyText == m_sTeamBFactionKey)
+		if (keyText == FACTION_KEY_RUSSIA || keyText == "RUSSIA")
 			return TEAM_B;
 
 		return -1;
