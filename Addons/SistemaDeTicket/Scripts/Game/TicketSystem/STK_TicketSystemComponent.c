@@ -11,6 +11,12 @@ typedef func STK_OnTicketScoreChanged;
 
 class STK_TicketSystemComponent : ScriptComponent
 {
+	[Attribute("US", UIWidgets.EditBox, "FactionKey do Time A (ex: US)")]
+	protected string m_sTeamAFactionKey;
+
+	[Attribute("USSR", UIWidgets.EditBox, "FactionKey do Time B (ex: USSR)")]
+	protected string m_sTeamBFactionKey;
+
 	protected ref STK_Config m_pConfig;
 	protected ref STK_SequentialCaptureSystem m_pCaptureSystem;
 	protected ref map<int, ref STK_TeamState> m_mTeams;
@@ -18,6 +24,7 @@ class STK_TicketSystemComponent : ScriptComponent
 
 	protected float m_fAcumuladorPeriodico = 0.0;
 	protected bool m_bStarted = false;
+	protected bool m_bMatchFinished = false;
 
 	// IDs de time definidos pelo seu mod (exemplo 0 e 1)
 	protected const int TEAM_A = 0;
@@ -59,6 +66,7 @@ class STK_TicketSystemComponent : ScriptComponent
 		m_mTeams.Set(TEAM_B, new STK_TeamState(TEAM_B, m_pConfig.m_iTicketsIniciais));
 
 		m_pCaptureSystem = new STK_SequentialCaptureSystem(m_pConfig);
+		m_pCaptureSystem.SetFactionResolver(ResolveTeamByFaction);
 		m_pCaptureSystem.m_OnFlagCaptured.Insert(OnFlagCaptured);
 
 		// TODO: registrar aqui, em ordem de avanço, as 5 áreas de captura do mapa.
@@ -79,7 +87,7 @@ class STK_TicketSystemComponent : ScriptComponent
 
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		if (!Replication.IsServer() || !m_bStarted)
+		if (!Replication.IsServer() || !m_bStarted || m_bMatchFinished)
 			return;
 
 		m_fAcumuladorPeriodico += timeSlice;
@@ -184,15 +192,53 @@ class STK_TicketSystemComponent : ScriptComponent
 
 	protected void OnTeamOutOfTickets(int teamId)
 	{
-		// TODO: finalizar partida e declarar vencedor
-		Print(string.Format("[TicketSystem] Team %1 sem tickets.", teamId));
+		if (m_bMatchFinished)
+			return;
+
+		m_bMatchFinished = true;
+		m_bStarted = false;
+
+		int winnerTeam = (teamId == TEAM_A) ? TEAM_B : TEAM_A;
+		Print(string.Format("[TicketSystem] Team %1 sem tickets. Vencedor: Team %2.", teamId, winnerTeam));
+
+		// Integração final com seu GameMode:
+		// 1) anunciar vencedor para HUD;
+		// 2) travar respawn;
+		// 3) chamar rotina oficial de fim de partida do modo.
 	}
 
 	protected int ResolveTeamByPlayerId(int playerId)
 	{
-		// Adaptação necessária: recuperar facção/time real via PlayerManager + FactionAffiliation.
-		// Retorno mock para facilitar início.
-		return (playerId % 2 == 0) ? TEAM_A : TEAM_B;
+		PlayerManager pm = GetGame().GetPlayerManager();
+		if (!pm)
+			return -1;
+
+		IEntity playerEntity = pm.GetPlayerControlledEntity(playerId);
+		if (!playerEntity)
+			return -1;
+
+		FactionAffiliationComponent facAff = FactionAffiliationComponent.Cast(playerEntity.FindComponent(FactionAffiliationComponent));
+		if (!facAff)
+			return -1;
+
+		return ResolveTeamByFaction(facAff.GetAffiliatedFaction());
+	}
+
+	protected int ResolveTeamByFaction(Faction faction)
+	{
+		if (!faction)
+			return -1;
+
+		FactionKey key = faction.GetFactionKey();
+		string keyText = key.ToString();
+
+		if (keyText == m_sTeamAFactionKey)
+			return TEAM_A;
+
+		if (keyText == m_sTeamBFactionKey)
+			return TEAM_B;
+
+		return -1;
 	}
 
 	int GetTickets(int teamId)

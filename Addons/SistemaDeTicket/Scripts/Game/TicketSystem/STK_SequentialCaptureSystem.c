@@ -1,5 +1,7 @@
 void STK_OnFlagCaptured(int flagIndex, int previousOwnerTeam, int newOwnerTeam);
 typedef func STK_OnFlagCaptured;
+int STK_OnResolveFactionTeam(Faction faction);
+typedef func STK_OnResolveFactionTeam;
 
 //------------------------------------------------------------------------------------------------
 // Regras de captura sequencial das torres.
@@ -19,11 +21,17 @@ class STK_SequentialCaptureSystem
 	// Callback para notificar o sistema principal de que uma bandeira mudou
 	ref ScriptInvokerBase<STK_OnFlagCaptured> m_OnFlagCaptured;
 	// parâmetros: (flagIndex, previousOwnerTeam, newOwnerTeam)
+	STK_OnResolveFactionTeam m_fnResolveFactionTeam;
 
 	void STK_SequentialCaptureSystem(STK_Config config)
 	{
 		m_pConfig = config;
 		m_OnFlagCaptured = new ScriptInvokerBase<STK_OnFlagCaptured>();
+	}
+
+	void SetFactionResolver(STK_OnResolveFactionTeam fnResolveFactionTeam)
+	{
+		m_fnResolveFactionTeam = fnResolveFactionTeam;
 	}
 
 	// Registre as 5 torres (ou quantidade configurada) em ordem de avanço.
@@ -129,9 +137,10 @@ class STK_SequentialCaptureSystem
 		if (!faction)
 			return -1;
 
-		// Adapte ao seu mapeamento real de facções.
-		// Exemplo: US=0 / USSR=1
-		return faction.GetFactionKey().Hash() % 2;
+		if (m_fnResolveFactionTeam)
+			return m_fnResolveFactionTeam(faction);
+
+		return -1;
 	}
 
 	protected int FindFlagIndexByOwnerFactionEvent(Faction previousFaction, Faction newFaction)

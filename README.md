@@ -49,6 +49,37 @@ Addons/SistemaDeTicket/
 
 ## Adaptações pendentes (esperadas)
 
-- Mapeamento real de facção -> time em `ResolveTeamByPlayerId(...)` e `TeamIdFromFaction(...)`.
-- Lógica concreta de habilitar/desabilitar captura no método `SetFlagCaptureEnabled(...)` de acordo com o prefab da torre.
-- Lógica de encerramento de partida em `OnTeamOutOfTickets(...)`.
+### 1) Mapeamento real de facção -> time
+
+Agora o `STK_TicketSystemComponent` já faz esse mapeamento por `FactionKey`:
+
+- `m_sTeamAFactionKey` (padrão `"US"`)
+- `m_sTeamBFactionKey` (padrão `"USSR"`)
+
+Fluxo:
+1. Recebe `playerId` (morte/respawn) ou `Faction` (captura).
+2. Lê `FactionKey`.
+3. Compara com os dois atributos acima e retorna `TEAM_A` ou `TEAM_B`.
+
+Se seu cenário usa outras facções, basta trocar esses dois atributos no Editor.
+
+### 2) Habilitar/desabilitar captura da torre
+
+No fluxo atual, a captura já é bloqueada de forma confiável pela regra de negócio:
+
+- Cada torre tem `m_bAtivaParaCaptura`.
+- Se uma torre bloqueada disparar evento, o sistema ignora no `OnOwnershipChanged(...)`.
+
+Para o bloqueio ficar também *visual* (ícone/luz/interação), implemente no método
+`SetFlagCaptureEnabled(...)` de `STK_SequentialCaptureSystem` de acordo com o prefab da sua torre
+(por exemplo, desativar trigger de captura, trocar material/luz, desativar interação).
+
+### 3) Encerramento da partida ao zerar tickets
+
+`OnTeamOutOfTickets(...)` agora já:
+
+- marca `m_bMatchFinished = true`;
+- para a contagem periódica (`m_bStarted = false`);
+- calcula e loga o time vencedor.
+
+Você só precisa conectar essa parte ao seu fluxo final de modo de jogo (HUD de vitória, tela de fim e reinício da rodada).
