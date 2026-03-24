@@ -5,31 +5,52 @@
 [ComponentEditorProps(category: "GameScripted/GameMode", description: "Sistema de tickets e captura sequencial")]
 class STK_TicketSystemComponentClass : ScriptComponentClass {}
 
+// Callback para UI local: tickets time A e tickets time B
+void STK_OnTicketScoreChanged(int ticketsTeamA, int ticketsTeamB);
+typedef func STK_OnTicketScoreChanged;
+
 class STK_TicketSystemComponent : ScriptComponent
 {
 	protected ref STK_Config m_pConfig;
 	protected ref STK_SequentialCaptureSystem m_pCaptureSystem;
 	protected ref map<int, ref STK_TeamState> m_mTeams;
+	protected ref STK_PlayerEventsBridge m_pPlayerEventsBridge;
 
 	protected float m_fAcumuladorPeriodico = 0.0;
 	protected bool m_bStarted = false;
-	protected ref STK_PlayerEventsBridge m_pPlayerEventsBridge;
 
 	// IDs de time definidos pelo seu mod (exemplo 0 e 1)
 	protected const int TEAM_A = 0;
 	protected const int TEAM_B = 1;
 
+	// Replicação de placar para clientes (HUD)
+	[RplProp(onRplName: "OnReplicatedScoreChanged")]
+	protected int m_iRepTicketsTeamA;
+
+	[RplProp(onRplName: "OnReplicatedScoreChanged")]
+	protected int m_iRepTicketsTeamB;
+
+	protected ref ScriptInvokerBase<STK_OnTicketScoreChanged> m_OnTicketScoreChanged;
+
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
 
-		if (!Replication.IsServer())
-			return;
+		m_OnTicketScoreChanged = new ScriptInvokerBase<STK_OnTicketScoreChanged>();
 
-		Initialize();
+		if (Replication.IsServer())
+			InitializeServer();
 	}
 
-	protected void Initialize()
+	override void EOnDelete(IEntity owner)
+	{
+		if (Replication.IsServer() && m_pPlayerEventsBridge)
+			m_pPlayerEventsBridge.Unbind();
+
+		super.EOnDelete(owner);
+	}
+
+	protected void InitializeServer()
 	{
 		m_pConfig = new STK_Config();
 
@@ -46,25 +67,19 @@ class STK_TicketSystemComponent : ScriptComponent
 		// m_pCaptureSystem.RegisterFlag(m_FlagB_CaptureArea);
 		// ...
 
-				SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		m_pPlayerEventsBridge = new STK_PlayerEventsBridge(gameMode, this);
 		m_pPlayerEventsBridge.Bind();
 
 		m_pCaptureSystem.Start();
 		m_bStarted = true;
+
+		SyncReplicatedScore();
 	}
 
-
-	override void EOnDelete(IEntity owner)
-	{
-		if (Replication.IsServer() && m_pPlayerEventsBridge)
-			m_pPlayerEventsBridge.Unbind();
-
-		super.EOnDelete(owner);
-	}
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		if (!m_bStarted || !Replication.IsServer())
+		if (!Replication.IsServer() || !m_bStarted)
 			return;
 
 		m_fAcumuladorPeriodico += timeSlice;
@@ -92,7 +107,6 @@ class STK_TicketSystemComponent : ScriptComponent
 
 		int flags = m_pCaptureSystem.CountFlagsControlledByTeam(teamId);
 		int loss = m_pConfig.m_iPerdaBasePeriodica * flags;
-
 		SubtractTickets(teamId, loss, string.Format("Perda periódica (%1 flags)", flags));
 	}
 
@@ -125,10 +139,8 @@ class STK_TicketSystemComponent : ScriptComponent
 		if (previousOwnerTeam == newOwnerTeam)
 			return;
 
-		// Não há custo direto de ticket na captura, mas aqui é o ponto ideal para:
-		// - anunciar evento no HUD
-		// - tocar áudio
-		// - atualizar objetivos
+		// Gancho para HUD/áudio/objetivos
+		Print(string.Format("[TicketSystem] Flag %1 capturada: %2 -> %3", flagIdx, previousOwnerTeam, newOwnerTeam));
 	}
 
 	//--------------------------------------------------------------------------------------------
@@ -144,13 +156,30 @@ class STK_TicketSystemComponent : ScriptComponent
 			return;
 
 		teamState.m_iTickets = Math.Max(0, teamState.m_iTickets - amount);
-
 		Print(string.Format("[TicketSystem] Team=%1 -%2 (%3) => %4", teamId, amount, reason, teamState.m_iTickets));
 
+		SyncReplicatedScore();
+
 		if (teamState.m_iTickets <= 0)
-		{
 			OnTeamOutOfTickets(teamId);
-		}
+	}
+
+	protected void SyncReplicatedScore()
+	{
+		m_iRepTicketsTeamA = GetTickets(TEAM_A);
+		m_iRepTicketsTeamB = GetTickets(TEAM_B);
+		Replication.BumpMe();
+
+		// Executa também no servidor para debug local/headless
+		OnReplicatedScoreChanged();
+	}
+
+	protected void OnReplicatedScoreChanged()
+	{
+		if (!m_OnTicketScoreChanged)
+			return;
+
+		m_OnTicketScoreChanged.Invoke(m_iRepTicketsTeamA, m_iRepTicketsTeamB);
 	}
 
 	protected void OnTeamOutOfTickets(int teamId)
@@ -166,7 +195,6 @@ class STK_TicketSystemComponent : ScriptComponent
 		return (playerId % 2 == 0) ? TEAM_A : TEAM_B;
 	}
 
-	// Métodos auxiliares para HUD/Debug
 	int GetTickets(int teamId)
 	{
 		STK_TeamState teamState = m_mTeams.Get(teamId);
@@ -174,5 +202,15 @@ class STK_TicketSystemComponent : ScriptComponent
 			return 0;
 
 		return teamState.m_iTickets;
+	}
+
+	ScriptInvokerBase<STK_OnTicketScoreChanged> GetOnTicketScoreChanged()
+	{
+		return m_OnTicketScoreChanged;
+	}
+
+	string GetFormattedScoreboardText()
+	{
+		return string.Format("TIME A: %1  |  TIME B: %2", m_iRepTicketsTeamA, m_iRepTicketsTeamB);
 	}
 };

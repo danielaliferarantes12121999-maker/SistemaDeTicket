@@ -22,5 +22,5 @@ class STK_Config
 	int m_iPerdaPorRespawn = 6;
 
 	// Tickets iniciais de cada time
-	int m_iTicketsIniciais = 500;
+	int m_iTicketsIniciais = 2000;
 };

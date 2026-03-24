@@ -1,0 +1,18 @@
+FrameWidgetClass {
+ Name "STK_TicketHUDRoot"
+ HorizontalAlign "center_ref"
+ VerticalAlign "top_ref"
+ Size 1 1
+ {
+  TextWidgetClass {
+   Name "ScoreText"
+   Text "TIME A: 2000  |  TIME B: 2000"
+   HorizontalAlign "center_ref"
+   VerticalAlign "top_ref"
+   Position 0 0.03
+   Size 0.4 0.04
+   Style "Bold"
+   Color 1 1 1 1
+  }
+ }
+}
