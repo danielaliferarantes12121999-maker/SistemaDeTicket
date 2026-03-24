@@ -46,6 +46,9 @@ Addons/SistemaDeTicket/
 2. Registre as 5 áreas de captura no `InitializeServer()` em ordem de avanço.
 3. Adicione `STK_TicketHUDComponent` em uma entidade client-side de HUD/UI (ou PlayerController local).
 4. Garanta que o layout `Addons/SistemaDeTicket/UI/layouts/STK_TicketHUD.layout` esteja no build do addon.
+5. No `STK_TicketHUDComponent`, ajuste os caminhos das texturas:
+   - `m_sTeamAFlagTexture` (bandeira da Ucrânia)
+   - `m_sTeamBFlagTexture` (bandeira da Rússia)
 
 ## Adaptações pendentes (esperadas)
 

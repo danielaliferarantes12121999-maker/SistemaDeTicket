@@ -11,8 +11,17 @@ class STK_TicketHUDComponent : ScriptComponent
 	[Attribute("Addons/SistemaDeTicket/UI/layouts/STK_TicketHUD.layout", UIWidgets.EditBox, "Layout com um TextWidget chamado ScoreText")]
 	protected ResourceName m_sHudLayout;
 
+	// Ícones de bandeira (podem apontar para assets do seu mod de facções)
+	[Attribute("Addons/SistemaDeTicket/UI/textures/flag_ukraine.edds", UIWidgets.EditBox, "Bandeira do Time A")]
+	protected ResourceName m_sTeamAFlagTexture;
+
+	[Attribute("Addons/SistemaDeTicket/UI/textures/flag_russia.edds", UIWidgets.EditBox, "Bandeira do Time B")]
+	protected ResourceName m_sTeamBFlagTexture;
+
 	protected Widget m_wRoot;
 	protected TextWidget m_wScoreText;
+	protected ImageWidget m_wTeamAFlag;
+	protected ImageWidget m_wTeamBFlag;
 	protected STK_TicketSystemComponent m_pTicketSystem;
 
 	override void OnPostInit(IEntity owner)
@@ -51,6 +60,15 @@ class STK_TicketHUDComponent : ScriptComponent
 			return;
 
 		m_wScoreText = TextWidget.Cast(m_wRoot.FindAnyWidget("ScoreText"));
+		m_wTeamAFlag = ImageWidget.Cast(m_wRoot.FindAnyWidget("TeamAFlag"));
+		m_wTeamBFlag = ImageWidget.Cast(m_wRoot.FindAnyWidget("TeamBFlag"));
+
+		if (m_wTeamAFlag && m_sTeamAFlagTexture != string.Empty)
+			m_wTeamAFlag.LoadImageTexture(0, m_sTeamAFlagTexture);
+
+		if (m_wTeamBFlag && m_sTeamBFlagTexture != string.Empty)
+			m_wTeamBFlag.LoadImageTexture(0, m_sTeamBFlagTexture);
+
 		if (m_wScoreText)
 			m_wScoreText.SetText("TIME A: 2000  |  TIME B: 2000");
 	}
